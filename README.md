@@ -1,2 +1,3 @@
 # codex1
-primeirorepositoriocodex
+
+Base de projeto para orquestração multi-IA em `orchestrator/`.
