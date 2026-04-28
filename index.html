@@ -1,62 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Orquestrador IA</title>
-
-<style>
-body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
-  padding: 20px;
-}
-input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-button {
-  padding: 10px;
-  width: 100%;
-  background: #22c55e;
-  border: none;
-  color: white;
-}
-pre {
-  margin-top: 20px;
-  background: black;
-  padding: 10px;
-}
-</style>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orquestrador IA</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --ok:#22c55e; --text:#f8fafc; --line:#334155; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 18px; }
+    .wrap { max-width: 860px; margin: 0 auto; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    p { color: var(--muted); line-height: 1.45; }
+    textarea { width: 100%; min-height: 120px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background:#020617; color:var(--text); font-size:16px; }
+    button { width:100%; margin-top:12px; padding:14px; border:0; border-radius:12px; background:var(--ok); color:#052e16; font-weight:800; font-size:16px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background:#020617; border:1px solid var(--line); border-radius:12px; padding:14px; min-height:180px; }
+    .grid { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin:14px 0; }
+    .step { border:1px solid var(--line); border-radius:12px; padding:10px; color:var(--muted); font-size:13px; }
+    .on { color:#bbf7d0; border-color:#16a34a; }
+    .small { font-size:12px; color:var(--muted); }
+  </style>
 </head>
-
 <body>
-
-<h2>Orquestrador IA</h2>
-
-<input id="input" placeholder="Digite comando..." />
-<button onclick="run()">Executar</button>
-
-<pre id="output"></pre>
-
-<script>
-async function run() {
-  const input = document.getElementById("input").value;
-
-  const response = await fetch("https://SEU_BACKEND_AQUI/run", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ input })
-  });
-
-  const data = await response.json();
-  document.getElementById("output").innerText = data.output;
-}
-</script>
-
+  <main class="wrap">
+    <section class="card">
+      <h1>Orquestrador IA</h1>
+      <p>Sistema web com frontend, backend Node/Express, CORS, healthcheck e endpoint operacional.</p>
+      <textarea id="input" placeholder="Digite o projeto, script, app ou tarefa que deseja executar..."></textarea>
+      <button onclick="run()">Executar</button>
+      <div class="grid" id="steps">
+        <div class="step">1. Receber</div><div class="step">2. Planejar</div><div class="step">3. Executar</div><div class="step">4. Consolidar</div>
+      </div>
+      <pre id="output">Aguardando comando.</pre>
+      <div class="small" id="apiInfo"></div>
+    </section>
+  </main>
+  <script>
+    const API_BASE = window.location.origin;
+    document.getElementById('apiInfo').innerText = 'API: ' + API_BASE;
+    async function run() {
+      const out = document.getElementById('output');
+      const steps = [...document.querySelectorAll('.step')];
+      steps.forEach(s => s.classList.remove('on'));
+      out.innerText = 'Executando...';
+      steps[0].classList.add('on');
+      const input = document.getElementById('input').value.trim();
+      try {
+        steps[1].classList.add('on');
+        const response = await fetch(API_BASE + '/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input })
+        });
+        steps[2].classList.add('on');
+        const data = await response.json();
+        steps[3].classList.add('on');
+        out.innerText = data.output || JSON.stringify(data, null, 2);
+      } catch (err) {
+        out.innerText = 'Erro de conexão com backend: ' + err.message;
+      }
+    }
+  </script>
 </body>
 </html>
