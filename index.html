@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Orquestrador IA</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  padding: 20px;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+button {
+  padding: 10px;
+  width: 100%;
+  background: #22c55e;
+  border: none;
+  color: white;
+}
+pre {
+  margin-top: 20px;
+  background: black;
+  padding: 10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Orquestrador IA</h2>
+
+<input id="input" placeholder="Digite comando..." />
+<button onclick="run()">Executar</button>
+
+<pre id="output"></pre>
+
+<script>
+async function run() {
+  const input = document.getElementById("input").value;
+
+  const response = await fetch("https://SEU_BACKEND_AQUI/run", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ input })
+  });
+
+  const data = await response.json();
+  document.getElementById("output").innerText = data.output;
+}
+</script>
+
+</body>
+</html>
