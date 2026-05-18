@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orquestrador IA</title>
+  <title>Ebook Premium AI</title>
   <style>
     :root { --bg:#0f172a; --card:#111827; --muted:#94a3b8; --ok:#22c55e; --text:#f8fafc; --line:#334155; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; background: var(--bg); color: var(--text); padding: 18px; }
-    .wrap { max-width: 860px; margin: 0 auto; }
+    .wrap { max-width: 920px; margin: 0 auto; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-    h1 { margin: 0 0 6px; font-size: 26px; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
     p { color: var(--muted); line-height: 1.45; }
-    textarea { width: 100%; min-height: 120px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background:#020617; color:var(--text); font-size:16px; }
-    button { width:100%; margin-top:12px; padding:14px; border:0; border-radius:12px; background:var(--ok); color:#052e16; font-weight:800; font-size:16px; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; background:#020617; border:1px solid var(--line); border-radius:12px; padding:14px; min-height:180px; }
+    textarea { width: 100%; min-height: 100px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background:#020617; color:var(--text); font-size:16px; }
+    button { width:100%; margin-top:12px; padding:14px; border:0; border-radius:12px; background:var(--ok); color:#052e16; font-weight:800; font-size:16px; cursor:pointer; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background:#020617; border:1px solid var(--line); border-radius:12px; padding:14px; min-height:220px; }
     .grid { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; margin:14px 0; }
     .step { border:1px solid var(--line); border-radius:12px; padding:10px; color:var(--muted); font-size:13px; }
     .on { color:#bbf7d0; border-color:#16a34a; }
@@ -24,14 +24,14 @@
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>Orquestrador IA</h1>
-      <p>Sistema web com frontend, backend Node/Express, CORS, healthcheck e endpoint operacional.</p>
-      <textarea id="input" placeholder="Digite o projeto, script, app ou tarefa que deseja executar..."></textarea>
-      <button onclick="run()">Executar</button>
+      <h1>Ebook Premium AI</h1>
+      <p>Crie e-books completos com padrão premium: conteúdo profundo, confiável, informativo e pronto para publicação.</p>
+      <textarea id="input" placeholder="Ex.: Ebook sobre marketing digital para clínicas odontológicas"></textarea>
+      <button onclick="run()">Gerar e-book completo</button>
       <div class="grid" id="steps">
-        <div class="step">1. Receber</div><div class="step">2. Planejar</div><div class="step">3. Executar</div><div class="step">4. Consolidar</div>
+        <div class="step">1. Tema</div><div class="step">2. Planejamento</div><div class="step">3. Redação</div><div class="step">4. Entrega</div>
       </div>
-      <pre id="output">Aguardando comando.</pre>
+      <pre id="output">Aguardando tema para gerar seu e-book premium.</pre>
       <div class="small" id="apiInfo"></div>
     </section>
   </main>
@@ -42,7 +42,7 @@
       const out = document.getElementById('output');
       const steps = [...document.querySelectorAll('.step')];
       steps.forEach(s => s.classList.remove('on'));
-      out.innerText = 'Executando...';
+      out.innerText = 'Gerando e-book...';
       steps[0].classList.add('on');
       const input = document.getElementById('input').value.trim();
       try {
