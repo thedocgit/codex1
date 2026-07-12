@@ -1,13 +1,57 @@
-import { callOpenAI } from "../agents/openai.js";
+import {
+  CapabilityRegistry,
+  CognitiveRuntime,
+  ModelGateway,
+  buildCircuit,
+  createPlan,
+  interpret,
+  modelGoal,
+  perceive
+} from "./cognitive/index.js";
 
-export async function orchestrator(prompt) {
+const registry = new CapabilityRegistry();
+const gateway = new ModelGateway();
+const runtime = new CognitiveRuntime({ modelGateway: gateway });
 
-  const step1 = await callOpenAI("Defina escopo completo: " + prompt);
-  const step2 = await callOpenAI("Crie arquitetura: " + step1);
-  const step3 = await callOpenAI("Execute completo: " + step2);
+export async function orchestrator(prompt, options = {}) {
+  const perception = perceive(prompt, options.context);
+  const interpretation = interpret(perception);
+
+  if (interpretation.requiresApproval && options.approved !== true) {
+    return {
+      status: "awaiting_approval",
+      result: "Execution requires explicit approval because the objective was classified as high risk.",
+      trace: { perception, interpretation }
+    };
+  }
+
+  const goal = modelGoal(interpretation, options.goal);
+  const plan = createPlan(goal, registry);
+  const circuit = buildCircuit(plan);
+  const execution = await runtime.execute({ goal, plan, circuit });
 
   return {
-    result: step3,
-    steps: [step1, step2]
+    status: execution.status,
+    result: execution.result,
+    trace: {
+      perception,
+      interpretation,
+      goal,
+      plan,
+      circuit,
+      validation: execution.validation,
+      reflection: execution.reflection
+    },
+    metrics: {
+      provider: execution.model.providerId,
+      model: execution.model.model,
+      latencyMs: execution.model.latencyMs,
+      capabilityCount: registry.list().length,
+      circuitNodeCount: circuit.nodes.length
+    }
   };
+}
+
+export function listCapabilities() {
+  return registry.list();
 }
