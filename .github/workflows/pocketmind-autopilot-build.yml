@@ -1,0 +1,60 @@
+name: Build PocketMind Autopilot APK
+
+on:
+  push:
+    paths:
+      - ".github/workflows/pocketmind-autopilot-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Download verified source
+        run: |
+          curl -fL --retry 3 --connect-timeout 20 \
+            "https://8b47a310-2934-4a1c-ac28-f9b94b5c49a9.sandbox.floot.app/_cdn/static/c653d387-d24d-4352-bae4-b42d3010c0d0-PocketMindAutopilot-v1.0.0-source.zip" \
+            -o source.zip
+          echo "d518ebdaaa6f08bc7ac102188cdaf27d52d385539657302df45d0be31abca89d  source.zip" | sha256sum -c -
+          unzip -q source.zip
+
+      - name: Build debug APK
+        working-directory: PocketMindAutopilot-v1.0.0
+        run: |
+          gradle --no-daemon --stacktrace :app:assembleDebug
+          test -f app/build/outputs/apk/debug/app-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../PocketMindAutopilot-v1.0.0-debug.apk
+
+      - name: APK checksum
+        run: sha256sum PocketMindAutopilot-v1.0.0-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketMindAutopilot-v1.0.0-debug
+          path: PocketMindAutopilot-v1.0.0-debug.apk
+          if-no-files-found: error
+          retention-days: 7
