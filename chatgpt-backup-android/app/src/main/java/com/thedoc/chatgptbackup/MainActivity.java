@@ -9,60 +9,55 @@ import android.webkit.*;
 import android.widget.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import org.json.*;
 
 public class MainActivity extends Activity {
-  WebView web;
-  TextView status;
-  Button collect, export;
-  final String JS = "(function(){try{const id=(location.pathname.match(/\\/c\\/([^/?#]+)/)||[])[1];if(!id)return JSON.stringify({error:'Abra uma conversa /c/ primeiro'});const main=document.querySelector('main')||document.querySelector('[role=main]');if(!main)return JSON.stringify({error:'Conteudo ainda nao carregado'});const ms=[];main.querySelectorAll('[data-message-author-role]').forEach(n=>{const t=(n.innerText||'').trim();if(t)ms.push({role:n.getAttribute('data-message-author-role')||'unknown',text:t})});return JSON.stringify({id:id,title:document.title,url:location.origin+'/c/'+id,capturedAt:new Date().toISOString(),messages:ms,fullText:ms.length?null:(main.innerText||'').trim()})}catch(e){return JSON.stringify({error:String(e)})}})()";
-
+  WebView web; TextView status; Button all, pause, export;
+  volatile boolean stopped=false;
   @Override public void onCreate(Bundle b){
     super.onCreate(b);
     LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL);
-    LinearLayout bar=new LinearLayout(this); bar.setPadding(8,8,8,8);
-    collect=new Button(this); collect.setText("Salvar conversa");
+    LinearLayout bar=new LinearLayout(this);
+    all=new Button(this); all.setText("Coletar todas");
+    pause=new Button(this); pause.setText("Pausar");
     export=new Button(this); export.setText("Exportar JSON");
-    status=new TextView(this); status.setText("Entre no ChatGPT. Abra uma conversa e toque Salvar conversa.");
-    bar.addView(collect,new LinearLayout.LayoutParams(0,-2,1)); bar.addView(export,new LinearLayout.LayoutParams(0,-2,1));
+    status=new TextView(this); status.setPadding(12,8,12,8); status.setText("Entre no ChatGPT e toque Coletar todas.");
+    bar.addView(all,new LinearLayout.LayoutParams(0,-2,1)); bar.addView(pause,new LinearLayout.LayoutParams(0,-2,1)); bar.addView(export,new LinearLayout.LayoutParams(0,-2,1));
     root.addView(bar); root.addView(status);
     web=new WebView(this); root.addView(web,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
-    WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true); s.setUserAgentString(s.getUserAgentString()+" ChatGPTBackup/1.0");
+    WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
     CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
-    web.setWebViewClient(new WebViewClient());
-    web.setWebChromeClient(new WebChromeClient());
+    web.addJavascriptInterface(new Bridge(),"BackupAndroid");
+    web.setWebChromeClient(new WebChromeClient()); web.setWebViewClient(new WebViewClient());
     web.loadUrl("https://chatgpt.com/");
-    collect.setOnClickListener(v->capture());
+    all.setOnClickListener(v->{stopped=false; runCollector();});
+    pause.setOnClickListener(v->{stopped=true; web.evaluateJavascript("window.__cgptStop=true",null); status.setText("Pausado. Toque Coletar todas para retomar.");});
     export.setOnClickListener(v->exportData());
   }
 
-  void capture(){
-    web.evaluateJavascript(JS, val -> {
-      try {
-        String json = val;
-        if(json.startsWith("\"")&&json.endsWith("\"")) json = unquote(json);
-        if(json.contains("\"error\"")) { status.setText(json); return; }
-        org.json.JSONObject o=new org.json.JSONObject(json);
-        String id=o.getString("id");
-        getSharedPreferences("backup",MODE_PRIVATE).edit().putString("c_"+id,json).apply();
-        int n=count(); status.setText("Salvas: "+n+" conversas. Abra a próxima conversa e toque novamente.");
-      } catch(Exception e){ status.setText("Erro: "+e.getMessage()); }
-    });
+  void runCollector(){
+    status.setText("Iniciando coleta automática...");
+    String js="(async()=>{window.__cgptStop=false;const sleep=m=>new Promise(r=>setTimeout(r,m));"+
+      "async function j(u){let r=await fetch(u,{credentials:'include'});if(!r.ok)throw new Error(r.status+' '+u);return await r.json()}"+
+      "try{let off=0,total=0,seen=new Set();while(!window.__cgptStop){let d=await j('/backend-api/conversations?offset='+off+'&limit=100&order=updated');let a=d.items||d.conversations||[];if(!a.length)break;for(const x of a){if(window.__cgptStop)break;let id=x.id||x.conversation_id;if(!id||seen.has(id))continue;seen.add(id);if(BackupAndroid.has(id)) {total++;BackupAndroid.progress(total,-1,'retomado');continue;}try{let c=await j('/backend-api/conversation/'+id);let ms=[];let mp=c.mapping||{};Object.values(mp).forEach(n=>{let m=n&&n.message;if(!m)return;let role=m.author&&m.author.role||'unknown';let p=m.content&&m.content.parts||[];let txt=p.filter(v=>typeof v==='string').join('\\n').trim();if(txt)ms.push({role:role,text:txt,create_time:m.create_time||null})});BackupAndroid.save(JSON.stringify({id:id,title:c.title||x.title||'',create_time:c.create_time||x.create_time||null,update_time:c.update_time||x.update_time||null,messages:ms}));total++;BackupAndroid.progress(total,d.total||-1,'salvo');}catch(e){BackupAndroid.error(id,String(e))}await sleep(120)}off+=a.length;if(a.length<100)break}BackupAndroid.done(total)}catch(e){BackupAndroid.fatal(String(e))}})();";
+    web.evaluateJavascript(js,null);
   }
 
-  String unquote(String s) throws Exception { return new org.json.JSONArray("["+s+"]").getString(0); }
-  int count(){ int n=0; for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet()) if(k.startsWith("c_"))n++; return n; }
-
+  class Bridge {
+    @JavascriptInterface public boolean has(String id){return getSharedPreferences("backup",MODE_PRIVATE).contains("c_"+id);}
+    @JavascriptInterface public void save(String json){try{JSONObject o=new JSONObject(json);getSharedPreferences("backup",MODE_PRIVATE).edit().putString("c_"+o.getString("id"),json).apply();}catch(Exception ignored){}}
+    @JavascriptInterface public void progress(int n,int total,String msg){runOnUiThread(()->status.setText(total>0?"Coletadas "+n+" de "+total:"Coletadas "+n+" — "+msg));}
+    @JavascriptInterface public void error(String id,String e){runOnUiThread(()->status.setText("Continuando após erro em "+id));}
+    @JavascriptInterface public void fatal(String e){runOnUiThread(()->status.setText("API indisponível nesta sessão: "+e+"\nUse o ChatGPT normalmente e tente novamente."));}
+    @JavascriptInterface public void done(int n){runOnUiThread(()->status.setText("Coleta concluída: "+n+" processadas; "+count()+" armazenadas. Agora toque Exportar JSON."));}
+  }
+  int count(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("c_"))n++;return n;}
   void exportData(){
-    try{
-      org.json.JSONArray arr=new org.json.JSONArray();
-      for(Object v:getSharedPreferences("backup",MODE_PRIVATE).getAll().values()) if(v instanceof String) arr.put(new org.json.JSONObject((String)v));
-      org.json.JSONObject out=new org.json.JSONObject(); out.put("total",arr.length()); out.put("conversations",arr);
-      File dir=getExternalFilesDir(null); File f=new File(dir,"chatgpt-conversas.json");
-      try(FileOutputStream os=new FileOutputStream(f)){os.write(out.toString(2).getBytes(StandardCharsets.UTF_8));}
-      Intent i=new Intent(Intent.ACTION_SEND); i.setType("application/json");
-      Uri u=androidx.core.content.FileProvider.getUriForFile(this,getPackageName()+".provider",f);
-      i.putExtra(Intent.EXTRA_STREAM,u); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION); startActivity(Intent.createChooser(i,"Salvar/compartilhar backup"));
-    }catch(Exception e){ status.setText("Erro ao exportar: "+e.getMessage()); }
+    try{JSONArray arr=new JSONArray();for(Object v:getSharedPreferences("backup",MODE_PRIVATE).getAll().values())if(v instanceof String)arr.put(new JSONObject((String)v));
+      JSONObject out=new JSONObject();out.put("exported_at",System.currentTimeMillis());out.put("total",arr.length());out.put("conversations",arr);
+      File f=new File(getExternalFilesDir(null),"chatgpt-conversas.json");try(FileOutputStream os=new FileOutputStream(f)){os.write(out.toString(2).getBytes(StandardCharsets.UTF_8));}
+      Uri u=androidx.core.content.FileProvider.getUriForFile(this,getPackageName()+".provider",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/json");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Salvar backup JSON"));
+    }catch(Exception e){status.setText("Erro ao exportar: "+e.getMessage());}
   }
-  @Override public void onBackPressed(){ if(web.canGoBack())web.goBack(); else super.onBackPressed(); }
+  @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
 }
