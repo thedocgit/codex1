@@ -13,6 +13,7 @@ public class AppSmokeTest {
     assertEquals(1,a.count());
    });
   }
+ }
  @Test public void collectorCoversActiveArchivedProjectsAndResume(){
   String js=CollectorScript.CODE;
   assertTrue(js.contains("is_archived='+arch"));
