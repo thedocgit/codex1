@@ -1,0 +1,28 @@
+name: Build Independent Chat Archive APK
+on:
+  push:
+    paths:
+      - 'chat-archive-final/**'
+      - '.github/workflows/build-chat-archive-final.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Build
+        working-directory: chat-archive-final
+        run: gradle assembleDebug --stacktrace
+      - name: Verify APK
+        run: |
+          test -s chat-archive-final/app/build/outputs/apk/debug/app-debug.apk
+          unzip -t chat-archive-final/app/build/outputs/apk/debug/app-debug.apk
+          sha256sum chat-archive-final/app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Chat-Archive-Android
+          path: chat-archive-final/app/build/outputs/apk/debug/app-debug.apk
