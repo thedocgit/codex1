@@ -53,8 +53,7 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void save(String json){try{JSONObject o=new JSONObject(json);String id=o.getString("id");getSharedPreferences("backup",MODE_PRIVATE).edit().putString("c_"+id,json).remove("e_"+id).apply();}catch(Exception ignored){}}
     @JavascriptInterface public void progress(int n,int total,String msg){runOnUiThread(()->status.setText(total>0?"Coletadas "+n+" de "+total:"Coletadas "+n+" — "+msg));}
     @JavascriptInterface public void error(String id,String e){getSharedPreferences("backup",MODE_PRIVATE).edit().putString("e_"+id,e).apply();runOnUiThread(()->status.setText("Continuando após erro em "+id));}
-    @JavascriptInterface public void fatal(String e){runOnUiThread(()->status.setText("API indisponível nesta sessão: "+e+"
-Use o ChatGPT normalmente e tente novamente."));}
+    @JavascriptInterface public void fatal(String e){runOnUiThread(()->status.setText("API indisponível nesta sessão: "+e+"\\nUse o ChatGPT normalmente e tente novamente."));}
     @JavascriptInterface public void done(int n){int errors=errorCount();runOnUiThread(()->status.setText(errors==0?"Coleta concluída: "+n+" processadas; "+count()+" armazenadas. Agora toque Exportar JSON.":"Coleta terminou com "+errors+" falha(s): "+count()+" armazenadas. Toque Coletar todas para tentar novamente ou Exportar JSON para auditoria."));}
   }
   int count(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("c_"))n++;return n;}
