@@ -3,6 +3,8 @@ on:
   push:
     paths: ['chatgpt-backup-android/**', '.github/workflows/build-chatgpt-backup-apk.yml']
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +23,15 @@ jobs:
       - run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
       - run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - run: gradle assembleDebug --stacktrace
+      - name: Prepare APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk ChatGPT-Backup-Android.apk
       - uses: actions/upload-artifact@v4
         with:
           name: ChatGPT-Backup-Android
-          path: chatgpt-backup-android/app/build/outputs/apk/debug/app-debug.apk
+          path: chatgpt-backup-android/ChatGPT-Backup-Android.apk
+      - name: Publish direct-download GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete chatgpt-backup-android-latest --yes --cleanup-tag || true
+          gh release create chatgpt-backup-android-latest ChatGPT-Backup-Android.apk --repo "$GITHUB_REPOSITORY" --title "ChatGPT Backup Android" --notes "APK Android compilado automaticamente. Baixe ChatGPT-Backup-Android.apk em Assets."
