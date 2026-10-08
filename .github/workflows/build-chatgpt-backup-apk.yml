@@ -22,6 +22,17 @@ jobs:
           gradle-version: '8.9'
       - run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
       - run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Wire complete collector
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("app/src/main/java/com/thedoc/chatgptbackup/MainActivity.java")
+          s=p.read_text()
+          a=s.index('    String js="(async()=>')
+          b=s.index('    web.evaluateJavascript(js,null);',a)
+          s=s[:a]+'    String js=CollectorScript.CODE;\\n'+s[b:]
+          p.write_text(s)
+          PY
       - run: gradle assembleDebug --stacktrace
       - name: Prepare APK
         run: cp app/build/outputs/apk/debug/app-debug.apk ChatGPT-Backup-Android.apk
