@@ -15,18 +15,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Wire complete collector
-        working-directory: chatgpt-backup-android
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("app/src/main/java/com/thedoc/chatgptbackup/MainActivity.java")
-          s=p.read_text()
-          a=s.index('    String js="(async()=>')
-          b=s.index('    web.evaluateJavascript(js,null);',a)
-          s=s[:a]+'    String js=CollectorScript.CODE;\n'+s[b:]
-          p.write_text(s)
-          PY
       - name: Build APK
         working-directory: chatgpt-backup-android
         run: gradle assembleDebug
