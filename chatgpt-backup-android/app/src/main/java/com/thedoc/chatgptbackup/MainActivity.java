@@ -53,13 +53,16 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void save(String json){try{JSONObject o=new JSONObject(json);getSharedPreferences("backup",MODE_PRIVATE).edit().putString("c_"+o.getString("id"),json).apply();}catch(Exception ignored){}}
     @JavascriptInterface public void progress(int n,int total,String msg){runOnUiThread(()->status.setText(total>0?"Coletadas "+n+" de "+total:"Coletadas "+n+" — "+msg));}
     @JavascriptInterface public void error(String id,String e){getSharedPreferences("backup",MODE_PRIVATE).edit().putString("e_"+id,e).apply();runOnUiThread(()->status.setText("Continuando após erro em "+id));}
-    @JavascriptInterface public void fatal(String e){runOnUiThread(()->status.setText("API indisponível nesta sessão: "+e+"\nUse o ChatGPT normalmente e tente novamente."));}
+    @JavascriptInterface public void fatal(String e){runOnUiThread(()->status.setText("API indisponível nesta sessão: "+e+"
+Use o ChatGPT normalmente e tente novamente."));}
     @JavascriptInterface public void done(int n){int errors=errorCount();runOnUiThread(()->status.setText(errors==0?"Coleta concluída: "+n+" processadas; "+count()+" armazenadas. Agora toque Exportar JSON.":"Coleta terminou com "+errors+" falha(s): "+count()+" armazenadas. Toque Coletar todas para tentar novamente ou Exportar JSON para auditoria."));}
   }
-  int count(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("c_"))n++;return n;}\n  int errorCount(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("e_"))n++;return n;}
+  int count(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("c_"))n++;return n;}
+  int errorCount(){int n=0;for(String k:getSharedPreferences("backup",MODE_PRIVATE).getAll().keySet())if(k.startsWith("e_"))n++;return n;}
   void exportData(){
-    try{JSONArray arr=new JSONArray();for(Object v:getSharedPreferences("backup",MODE_PRIVATE).getAll().values())if(v instanceof String)arr.put(new JSONObject((String)v));
-      JSONObject out=new JSONObject();JSONArray errors=new JSONArray();for(java.util.Map.Entry<String,?> e:getSharedPreferences("backup",MODE_PRIVATE).getAll().entrySet())if(e.getKey().startsWith("e_")){JSONObject x=new JSONObject();x.put("id",e.getKey().substring(2));x.put("error",String.valueOf(e.getValue()));errors.put(x);}\n      out.put("schema_version",4);out.put("exported_at",System.currentTimeMillis());out.put("total",arr.length());out.put("error_count",errors.length());out.put("errors",errors);out.put("conversations",arr);
+    try{JSONArray arr=new JSONArray();for(java.util.Map.Entry<String,?> e:getSharedPreferences("backup",MODE_PRIVATE).getAll().entrySet())if(e.getKey().startsWith("c_")&&e.getValue() instanceof String)arr.put(new JSONObject((String)e.getValue()));
+      JSONObject out=new JSONObject();JSONArray errors=new JSONArray();for(java.util.Map.Entry<String,?> e:getSharedPreferences("backup",MODE_PRIVATE).getAll().entrySet())if(e.getKey().startsWith("e_")){JSONObject x=new JSONObject();x.put("id",e.getKey().substring(2));x.put("error",String.valueOf(e.getValue()));errors.put(x);}
+      out.put("schema_version",4);out.put("exported_at",System.currentTimeMillis());out.put("total",arr.length());out.put("error_count",errors.length());out.put("errors",errors);out.put("conversations",arr);
       File f=new File(getExternalFilesDir(null),"chatgpt-conversas.json");try(FileOutputStream os=new FileOutputStream(f)){os.write(out.toString(2).getBytes(StandardCharsets.UTF_8));}
       Uri u=androidx.core.content.FileProvider.getUriForFile(this,getPackageName()+".provider",f);Intent i=new Intent(Intent.ACTION_SEND);i.setType("application/json");i.putExtra(Intent.EXTRA_STREAM,u);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(i,"Salvar backup JSON"));
     }catch(Exception e){status.setText("Erro ao exportar: "+e.getMessage());}
