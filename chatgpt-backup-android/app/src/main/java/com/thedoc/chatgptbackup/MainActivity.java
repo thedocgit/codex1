@@ -28,7 +28,14 @@ public class MainActivity extends Activity {
     WebSettings s=web.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
     CookieManager.getInstance().setAcceptCookie(true); CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
     web.addJavascriptInterface(new Bridge(),"BackupAndroid");
-    web.setWebChromeClient(new WebChromeClient()); web.setWebViewClient(new WebViewClient());
+    web.setWebChromeClient(new WebChromeClient()); web.setWebViewClient(new WebViewClient(){
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req){
+        Uri u=req.getUrl(); String h=u.getHost();
+        if(h!=null && (h.equals("chatgpt.com") || h.endsWith(".chatgpt.com") || h.equals("openai.com") || h.endsWith(".openai.com"))) return false;
+        try{startActivity(new Intent(Intent.ACTION_VIEW,u));}catch(Exception ignored){}
+        return true;
+      }
+    });
     web.loadUrl("https://chatgpt.com/");
     all.setOnClickListener(v->{stopped=false; runCollector();});
     pause.setOnClickListener(v->{stopped=true; web.evaluateJavascript("window.__cgptStop=true",null); status.setText("Pausado. Toque Coletar todas para retomar.");});
@@ -37,9 +44,7 @@ public class MainActivity extends Activity {
 
   void runCollector(){
     status.setText("Iniciando coleta automática...");
-    String js="(async()=>{window.__cgptStop=false;const sleep=m=>new Promise(r=>setTimeout(r,m));"+
-      "async function j(u){for(let a=0;a<6;a++){let r=await fetch(u,{credentials:'include'});if(r.ok)return await r.json();if(r.status==429||r.status>=500){await sleep(Math.min(30000,1000*Math.pow(2,a)));continue;}throw new Error(r.status+' '+u)}throw new Error('retry '+u)}"+
-      "try{let off=0,total=0,seen=new Set();async function one(x,project){let id=x.id||x.conversation_id;if(!id||seen.has(id))return;seen.add(id);if(BackupAndroid.has(id)){total++;BackupAndroid.progress(total,-1,'retomado');return;}try{let c=await j('/backend-api/conversation/'+id);let ms=[];let mp=c.mapping||{};Object.values(mp).forEach(n=>{let m=n&&n.message;if(!m)return;let role=m.author&&m.author.role||'unknown';let p=m.content&&m.content.parts||[];let txt=p.filter(v=>typeof v==='string').join('\\n').trim();if(txt)ms.push({role:role,text:txt,create_time:m.create_time||null})});BackupAndroid.save(JSON.stringify({id:id,title:c.title||x.title||'',create_time:c.create_time||x.create_time||null,update_time:c.update_time||x.update_time||null,project_id:project||c.gizmo_id||x.gizmo_id||null,is_archived:!!(c.is_archived||x.is_archived),messages:ms}));total++;BackupAndroid.progress(total,-1,'salvo');}catch(e){BackupAndroid.error(id,String(e))}await sleep(250)}while(!window.__cgptStop){let d=await j('/backend-api/conversations?offset='+off+'&limit=100&order=updated');let a=d.items||d.conversations||[];if(!a.length)break;for(const x of a){if(window.__cgptStop)break;await one(x,null)}off+=a.length;if(a.length<100)break}if(!window.__cgptStop){let pc=null;do{let pu='/backend-api/gizmos/snorlax/sidebar?owned_only=true&conversations_per_gizmo=0'+(pc?'&cursor='+encodeURIComponent(pc):'');let pd=await j(pu);for(const wrap of (pd.items||[])){let g=wrap.gizmo&&wrap.gizmo.gizmo||wrap.gizmo||wrap;let gid=g.id;if(!gid)continue;let cc='0';do{let cd=await j('/backend-api/gizmos/'+encodeURIComponent(gid)+'/conversations?cursor='+encodeURIComponent(cc));for(const x of (cd.items||[])){if(window.__cgptStop)break;await one(x,gid)}cc=cd.cursor||null}while(cc&&!window.__cgptStop)}pc=pd.cursor||null}while(pc&&!window.__cgptStop)}BackupAndroid.done(total)}catch(e){BackupAndroid.fatal(String(e))}})();";
+    String js=CollectorScript.CODE;
     web.evaluateJavascript(js,null);
   }
 
