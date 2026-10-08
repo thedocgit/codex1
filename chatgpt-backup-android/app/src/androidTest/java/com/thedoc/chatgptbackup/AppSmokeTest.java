@@ -13,5 +13,15 @@ public class AppSmokeTest {
     assertEquals(1,a.count());
    });
   }
+ @Test public void collectorCoversActiveArchivedProjectsAndResume(){
+  String js=CollectorScript.CODE;
+  assertTrue(js.contains("is_archived='+arch"));
+  assertTrue(js.contains("await root(false);await root(true)"));
+  assertTrue(js.contains("/backend-api/gizmos/snorlax/sidebar"));
+  assertTrue(js.contains("/conversations?cursor="));
+  assertTrue(js.contains("BackupAndroid.has(x.id)"));
+  assertTrue(js.contains("r.status==429||r.status>=500"));
+  assertTrue(js.contains("/backend-api/conversation/"));
+ }
  }
 }
