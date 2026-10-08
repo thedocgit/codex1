@@ -14,6 +14,15 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.9' }
+      - name: Configure independent project
+        working-directory: chat-archive-final
+        run: |
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name="ChatArchiveFinal"
+          include(":app")
+          EOF
       - name: Build
         working-directory: chat-archive-final
         run: gradle assembleDebug --stacktrace
