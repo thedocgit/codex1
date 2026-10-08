@@ -30,7 +30,7 @@ jobs:
           s=p.read_text()
           a=s.index('    String js="(async()=>')
           b=s.index('    web.evaluateJavascript(js,null);',a)
-          s=s[:a]+'    String js=CollectorScript.CODE;\\n'+s[b:]
+          s=s[:a]+'    String js=CollectorScript.CODE;\n'+s[b:]
           p.write_text(s)
           PY
       - run: gradle assembleDebug --stacktrace
